@@ -1,0 +1,284 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User and Authentication
+model User {
+  id          String       @id @default(uuid())
+  email       String       @unique
+  password    String
+  firstName   String
+  lastName    String
+  role        Role         @default(STAFF)
+  isActive    Boolean      @default(true)
+  lastLogin   DateTime?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  sessions    Session[]
+  permissions Permission[]
+  orders      Order[]
+  shifts      Shift[]
+}
+
+model Session {
+  id        String   @id @default(uuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+enum Role {
+  ADMIN
+  MANAGER
+  STAFF
+  CASHIER
+}
+
+// Products and Inventory
+model Product {
+  id          String      @id @default(uuid())
+  name        String
+  description String?
+  sku         String      @unique
+  barcode     String?     @unique
+  price       Decimal
+  cost        Decimal
+  categoryId  String
+  category    Category    @relation(fields: [categoryId], references: [id])
+  inventory   Inventory?
+  orderItems  OrderItem[]
+  discounts   Discount[]
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+}
+
+model Category {
+  id          String    @id @default(uuid())
+  name        String
+  description String?
+  products    Product[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model Inventory {
+  id           String              @id @default(uuid())
+  productId    String              @unique
+  product      Product             @relation(fields: [productId], references: [id])
+  quantity     Int                 @default(0)
+  lowStock     Int                 @default(5)
+  reorderPoint Int                 @default(10)
+  lastUpdated  DateTime            @default(now())
+  movements    InventoryMovement[]
+}
+
+model InventoryMovement {
+  id          String       @id @default(uuid())
+  inventoryId String
+  inventory   Inventory    @relation(fields: [inventoryId], references: [id])
+  type        MovementType
+  quantity    Int
+  reason      String?
+  createdAt   DateTime     @default(now())
+}
+
+enum MovementType {
+  IN
+  OUT
+  ADJUSTMENT
+  RETURN
+}
+
+// Orders and Payments
+model Order {
+  id            String        @id @default(uuid())
+  userId        String
+  user          User          @relation(fields: [userId], references: [id])
+  status        OrderStatus   @default(PENDING)
+  total         Decimal
+  subtotal      Decimal
+  tax           Decimal
+  discount      Decimal?
+  paymentMethod PaymentMethod
+  items         OrderItem[]
+  payments      Payment[]
+  shiftId       String
+  shift         Shift         @relation(fields: [shiftId], references: [id])
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+}
+
+model OrderItem {
+  id        String   @id @default(uuid())
+  orderId   String
+  order     Order    @relation(fields: [orderId], references: [id])
+  productId String
+  product   Product  @relation(fields: [productId], references: [id])
+  quantity  Int
+  price     Decimal
+  discount  Decimal?
+  createdAt DateTime @default(now())
+}
+
+model Payment {
+  id            String        @id @default(uuid())
+  orderId       String
+  order         Order         @relation(fields: [orderId], references: [id])
+  amount        Decimal
+  method        PaymentMethod
+  status        PaymentStatus @default(PENDING)
+  transactionId String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  CANCELLED
+  REFUNDED
+}
+
+enum PaymentMethod {
+  CASH
+  CREDIT_CARD
+  DEBIT_CARD
+  MOBILE_PAYMENT
+  GIFT_CARD
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+// Shifts and Cash Management
+model Shift {
+  id         String      @id @default(uuid())
+  userId     String
+  user       User        @relation(fields: [userId], references: [id])
+  startTime  DateTime    @default(now())
+  endTime    DateTime?
+  status     ShiftStatus @default(ACTIVE)
+  orders     Order[]
+  cashDrawer CashDrawer?
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+}
+
+model CashDrawer {
+  id             String            @id @default(uuid())
+  shiftId        String            @unique
+  shift          Shift             @relation(fields: [shiftId], references: [id])
+  openingBalance Decimal
+  closingBalance Decimal?
+  transactions   CashTransaction[]
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+}
+
+model CashTransaction {
+  id           String          @id @default(uuid())
+  cashDrawerId String
+  cashDrawer   CashDrawer      @relation(fields: [cashDrawerId], references: [id])
+  type         TransactionType
+  amount       Decimal
+  description  String?
+  createdAt    DateTime        @default(now())
+}
+
+enum ShiftStatus {
+  ACTIVE
+  CLOSED
+}
+
+enum TransactionType {
+  OPENING
+  CLOSING
+  CASH_IN
+  CASH_OUT
+  SALE
+  REFUND
+}
+
+// Discounts and Promotions
+model Discount {
+  id          String       @id @default(uuid())
+  name        String
+  description String?
+  type        DiscountType
+  value       Decimal
+  startDate   DateTime
+  endDate     DateTime?
+  isActive    Boolean      @default(true)
+  products    Product[]
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+}
+
+enum DiscountType {
+  PERCENTAGE
+  FIXED_AMOUNT
+  BUY_ONE_GET_ONE
+}
+
+// Permissions and Access Control
+model Permission {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?
+  users       User[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// Integrations
+model Integration {
+  id        String    @id @default(uuid())
+  name      String
+  type      String
+  config    Json
+  enabled   Boolean   @default(true)
+  webhooks  Webhook[]
+  apiKeys   ApiKey[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model Webhook {
+  id            String      @id @default(uuid())
+  integrationId String
+  integration   Integration @relation(fields: [integrationId], references: [id])
+  event         String
+  url           String
+  secret        String
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+}
+
+model ApiKey {
+  id            String      @id @default(uuid())
+  integrationId String
+  integration   Integration @relation(fields: [integrationId], references: [id])
+  name          String
+  key           String      @unique
+  permissions   String[]
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+}
