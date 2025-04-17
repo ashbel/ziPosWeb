@@ -1,0 +1,15 @@
+{
+  "dependencies": {
+    "@types/axios": "^0.9.36",
+    "@types/bull": "^3.15.9",
+    "@types/ioredis": "^4.28.10",
+    "@types/jsonwebtoken": "^9.0.9",
+    "@types/luxon": "^3.6.2",
+    "axios": "^1.8.4",
+    "bull": "^4.16.5",
+    "ioredis": "^5.6.1",
+    "jsonwebtoken": "^9.0.2",
+    "luxon": "^3.6.1",
+    "zod": "^3.24.3"
+  }
+}
