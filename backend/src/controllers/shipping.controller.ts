@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { ShippingService } from '../services/shipping.service';
 import { ValidationError } from '../utils/errors';
+import { Decimal } from 'decimal.js';
 
 export class ShippingController {
   constructor(private shippingService: ShippingService) {}
@@ -29,16 +30,25 @@ export class ShippingController {
 
   async createShipment(req: Request, res: Response) {
     try {
-      const { carrier, from, to, weight, dimensions, items } = req.body;
+      const { orderId, carrier, from, to, weight, dimensions, items } = req.body;
 
-      const shipment = await this.shippingService.createShipment({
-        carrier,
-        from,
-        to,
-        weight,
-        dimensions,
-        items
-      });
+      const shipment = await this.shippingService.createShipment(
+        orderId,
+        {
+          carrier,
+          origin: from,
+          destination: to,
+          packages: [{
+            weight,
+            length: dimensions.length,
+            width: dimensions.width,
+            height: dimensions.height,
+            value: new Decimal(0),
+            contents: items
+          }],
+          service: 'standard'
+        }
+      );
 
       res.json(shipment);
     } catch (error) {
@@ -55,8 +65,8 @@ export class ShippingController {
       const { carrier, trackingNumber } = req.params;
 
       const tracking = await this.shippingService.trackShipment(
-        carrier,
-        trackingNumber
+        trackingNumber,
+        carrier
       );
 
       res.json(tracking);
