@@ -1,12 +1,14 @@
 import { BaseService } from './base.service';
 import { ValidationError } from '../utils/errors';
-import { Queue } from 'bull';
+import Queue from 'bull';
 import { Redis } from 'ioredis';
 import { Expo, ExpoPushMessage } from 'expo-server-sdk';
 import { Twilio } from 'twilio';
 import { WebPushService } from './web-push.service';
 import { EmailService } from './email.service';
 import { DateTime } from 'luxon';
+import { SNSClient, PublishCommand } from '@aws-sdk/client-sns';
+import { Logger } from '../utils/logger';
 
 interface NotificationTemplate {
   id: string;
@@ -83,6 +85,13 @@ interface DeliveryStatus {
   error?: string;
 }
 
+interface NotificationOptions {
+  topicArn: string;
+  message: string;
+  subject?: string;
+  attributes?: Record<string, string>;
+}
+
 export class NotificationService extends BaseService {
   private notificationQueue: Queue;
   private expo: Expo;
@@ -90,10 +99,12 @@ export class NotificationService extends BaseService {
   private webPush: WebPushService;
   private emailService: EmailService;
   private readonly redis: Redis;
+  private snsClient: SNSClient;
+  private logger: Logger;
 
-  constructor(deps: any) {
-    super(deps);
-    
+  constructor(deps: { prisma: any; redis: any; logger: Logger }) {
+    super(deps.prisma, deps.redis, deps.logger);
+    this.logger = deps.logger;
     this.redis = deps.redis;
     this.emailService = deps.emailService;
     this.webPush = deps.webPush;
@@ -104,56 +115,32 @@ export class NotificationService extends BaseService {
       process.env.TWILIO_AUTH_TOKEN
     );
 
+    this.snsClient = new SNSClient({
+      region: process.env.AWS_REGION || 'us-east-1',
+      credentials: {
+        accessKeyId: process.env.AWS_ACCESS_KEY_ID || '',
+        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || '',
+      },
+    });
+
     this.initializeQueue();
   }
 
-  async sendNotification(payload: NotificationPayload): Promise<void> {
+  async sendNotification(options: NotificationOptions): Promise<string> {
     try {
-      // Validate payload
-      await this.validatePayload(payload);
+      const command = new PublishCommand({
+        TopicArn: options.topicArn,
+        Message: options.message,
+        Subject: options.subject,
+        MessageAttributes: options.attributes,
+      });
 
-      // Get user preferences
-      const preferences = await this.getUserPreferences(payload.userId);
-
-      // Get notification template
-      const template = await this.getTemplate(payload.template);
-
-      // Check quiet hours
-      const isQuietHours = await this.isInQuietHours(
-        payload.userId,
-        preferences
-      );
-
-      // Prepare notification data
-      const notificationData = await this.prepareNotificationData(
-        template,
-        payload.data
-      );
-
-      // Create notification record
-      const notification = await this.createNotificationRecord(
-        payload,
-        notificationData
-      );
-
-      // Determine channels to use
-      const channels = this.determineChannels(
-        template,
-        preferences,
-        payload.channels,
-        isQuietHours
-      );
-
-      // Queue notifications for each channel
-      await this.queueNotifications(
-        notification.id,
-        channels,
-        notificationData,
-        payload
-      );
+      const result = await this.snsClient.send(command);
+      this.logger.info('Notification sent successfully', { messageId: result.MessageId });
+      return result.MessageId || '';
     } catch (error) {
-      this.logger.error('Notification send error:', error);
-      throw error;
+      this.logger.error('Failed to send notification', { error });
+      throw new ValidationError('Failed to send notification');
     }
   }
 

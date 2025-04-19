@@ -6,10 +6,26 @@ import { DiscountSchema } from '../validators/discount.validator';
 export class DiscountController {
   constructor(private discountService: DiscountService) {}
 
+  async getDiscounts(req: Request, res: Response) {
+    const discounts = await this.discountService.getDiscounts();
+    res.json(discounts);
+  }
+
   async createDiscount(req: Request, res: Response) {
     await validateRequest(req, DiscountSchema.create);
     const discount = await this.discountService.createDiscount(req.body);
     res.status(201).json(discount);
+  }
+
+  async updateDiscount(req: Request, res: Response) {
+    await validateRequest(req, DiscountSchema.update);
+    const discount = await this.discountService.updateDiscount(req.params.id, req.body);
+    res.json(discount);
+  }
+
+  async deleteDiscount(req: Request, res: Response) {
+    await this.discountService.deleteDiscount(req.params.id);
+    res.status(204).send();
   }
 
   async validateDiscount(req: Request, res: Response) {

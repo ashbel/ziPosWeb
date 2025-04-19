@@ -1,16 +1,22 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Discount, DiscountType, Prisma } from '@prisma/client';
+import { Redis } from 'ioredis';
+import { Logger } from '../utils/logger';
 import { BaseService } from './base.service';
 import { ValidationError } from '../utils/errors';
 import { DateTime } from 'luxon';
+import { Decimal } from 'decimal.js';
 
 interface DiscountRule {
-  type: 'percentage' | 'fixed' | 'buy_x_get_y' | 'bulk';
+  type: DiscountType;
   value: number;
   minPurchase?: number;
   maxDiscount?: number;
   buyQuantity?: number;
   getQuantity?: number;
   stackable: boolean;
+  startDate: Date;
+  endDate?: Date;
+  isActive?: boolean;
 }
 
 interface DiscountCondition {
@@ -41,9 +47,15 @@ interface PromotionCampaign {
   };
 }
 
+interface ServiceDependencies {
+  prisma: PrismaClient;
+  redis: Redis;
+  logger: Logger;
+}
+
 export class DiscountService extends BaseService {
-  constructor(private prisma: PrismaClient) {
-    super(prisma);
+  constructor(deps: ServiceDependencies) {
+    super(deps.prisma, deps.redis, deps.logger);
   }
 
   async createDiscount(data: {
@@ -488,5 +500,22 @@ export class DiscountService extends BaseService {
     });
 
     return result.count;
+  }
+
+  async getDiscounts() {
+    return this.prisma.discount.findMany();
+  }
+
+  async updateDiscount(id: string, data: Prisma.DiscountUpdateInput) {
+    return this.prisma.discount.update({
+      where: { id },
+      data
+    });
+  }
+
+  async deleteDiscount(id: string) {
+    await this.prisma.discount.delete({
+      where: { id }
+    });
   }
 } 

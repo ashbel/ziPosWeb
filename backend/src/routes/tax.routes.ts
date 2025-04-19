@@ -127,4 +127,4 @@ router.get(
   (req, res) => taxController.generateTaxForecast(req, res)
 );
 
-export default router; 
+export const taxRoutes = router; 

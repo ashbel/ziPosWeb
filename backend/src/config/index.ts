@@ -49,7 +49,7 @@ export const config: Config = {
   databaseUrl: process.env.DATABASE_URL || 'postgresql://user:password@localhost:5432/pos',
   jwtSecret: process.env.JWT_SECRET || 'your-secret-key',
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || '1d',
-  corsOrigins: (process.env.CORS_ORIGINS || 'http://localhost:3000').split(','),
+  corsOrigins: (process.env.CORS_ORIGINS || 'http://localhost:5173').split(','),
   redis: {
     host: process.env.REDIS_HOST || 'localhost',
     port: parseInt(process.env.REDIS_PORT || '6379', 10),

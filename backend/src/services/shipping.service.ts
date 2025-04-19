@@ -1,6 +1,6 @@
 import { BaseService } from './base.service';
 import { ValidationError } from '../utils/errors';
-import { Decimal } from '@prisma/client/runtime';
+import { Decimal } from 'decimal.js';
 import axios from 'axios';
 import { PrismaClient } from '@prisma/client';
 import { Redis } from 'ioredis';

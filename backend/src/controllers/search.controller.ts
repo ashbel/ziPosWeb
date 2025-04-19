@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { SearchService } from '../services/search.service';
 import { validateRequest } from '../middleware/validate-request';
 import { SearchSchema } from '../validators/search.validator';
+import { ValidationError } from '../utils/errors';
 
 export class SearchController {
   constructor(private searchService: SearchService) {}
@@ -68,6 +69,45 @@ export class SearchController {
       res.write(`data: {"error": "${error.message}"}\n\n`);
     } finally {
       res.end();
+    }
+  }
+
+  async searchProducts(req: Request, res: Response) {
+    try {
+      const results = await this.searchService.searchProducts(req.query);
+      res.json(results);
+    } catch (error) {
+      if (error instanceof ValidationError) {
+        res.status(400).json({ error: error.message });
+      } else {
+        res.status(500).json({ error: 'Internal server error' });
+      }
+    }
+  }
+
+  async searchCustomers(req: Request, res: Response) {
+    try {
+      const results = await this.searchService.searchCustomers(req.query);
+      res.json(results);
+    } catch (error) {
+      if (error instanceof ValidationError) {
+        res.status(400).json({ error: error.message });
+      } else {
+        res.status(500).json({ error: 'Internal server error' });
+      }
+    }
+  }
+
+  async searchOrders(req: Request, res: Response) {
+    try {
+      const results = await this.searchService.searchOrders(req.query);
+      res.json(results);
+    } catch (error) {
+      if (error instanceof ValidationError) {
+        res.status(400).json({ error: error.message });
+      } else {
+        res.status(500).json({ error: 'Internal server error' });
+      }
     }
   }
 } 

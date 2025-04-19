@@ -1,5 +1,5 @@
 import { BaseService } from './base.service';
-import { Decimal } from '@prisma/client/runtime';
+import { Decimal } from 'decimal.js';
 import { subDays, addDays, startOfDay, endOfDay } from 'date-fns';
 
 interface Forecast {

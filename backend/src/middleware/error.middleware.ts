@@ -1,47 +1,25 @@
 import { Request, Response, NextFunction } from 'express';
-import { Prisma } from '@prisma/client';
-import { ZodError } from 'zod';
+import { ValidationError } from '../utils/errors';
 
 export const errorHandler = (
-  error: Error,
+  err: Error,
   req: Request,
   res: Response,
   next: NextFunction
 ) => {
-  console.error(error);
+  console.error(err.stack);
 
-  if (error instanceof Prisma.PrismaClientKnownRequestError) {
-    switch (error.code) {
-      case 'P2002':
-        return res.status(409).json({
-          error: 'Unique constraint violation',
-          field: error.meta?.target
-        });
-      case 'P2025':
-        return res.status(404).json({
-          error: 'Record not found'
-        });
-      default:
-        return res.status(500).json({
-          error: 'Database error'
-        });
-    }
-  }
-
-  if (error instanceof ZodError) {
+  if (err instanceof ValidationError) {
     return res.status(400).json({
-      error: 'Validation failed',
-      details: error.errors
+      error: 'Validation Error',
+      message: err.message,
+      details: err.details
     });
   }
 
-  if (error.name === 'UnauthorizedError') {
-    return res.status(401).json({
-      error: 'Unauthorized'
-    });
-  }
-
+  // Handle other types of errors
   return res.status(500).json({
-    error: 'Internal server error'
+    error: 'Internal Server Error',
+    message: process.env.NODE_ENV === 'development' ? err.message : 'Something went wrong'
   });
 }; 

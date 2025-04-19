@@ -34,4 +34,4 @@ router.get(
   (req, res) => healthController.getMetrics(req, res)
 );
 
-export default router; 
+export const healthRoutes = router; 

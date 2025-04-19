@@ -62,4 +62,4 @@ router.get('/permissions/available',
   roleController.getAvailablePermissions.bind(roleController)
 );
 
-export default router; 
+export const roleRoutes = router; 

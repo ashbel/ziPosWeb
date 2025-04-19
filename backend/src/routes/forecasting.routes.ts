@@ -63,4 +63,4 @@ router.get(
   (req, res) => forecastingController.getSeasonalTrends(req, res)
 );
 
-export default router; 
+export const forecastingRoutes = router; 

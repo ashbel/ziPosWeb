@@ -1,50 +1,32 @@
 import { Router } from 'express';
 import { ConfigurationController } from '../controllers/configuration.controller';
-import { authenticate } from '../middleware/authenticate';
-import { authorize } from '../middleware/authorize';
+import { ConfigurationService } from '../services/configuration.service';
+import { authMiddleware } from '../middleware/auth.middleware'; 
+import { Logger } from '../utils/logger';
+import {PrismaClient} from '@prisma/client';
+import Redis from 'ioredis';
 
-export function createConfigurationRoutes(
-  controller: ConfigurationController
-): Router {
-  const router = Router();
 
-  router.use(authenticate);
+const router = Router();
+const prisma = new PrismaClient();
+const redis = new Redis();
+const logger = new Logger('ConfigurationService');
 
-  router.put(
-    '/:key',
-    authorize('config.write'),
-    controller.setConfiguration.bind(controller)
-  );
+const configurationService = new ConfigurationService({
+  prisma,
+  redis,
+  logger
+});
 
-  router.get(
-    '/:key',
-    authorize('config.read'),
-    controller.getConfiguration.bind(controller)
-  );
+const configurationController = new ConfigurationController(configurationService);
 
-  router.post(
-    '/feature-flags',
-    authorize('config.manage'),
-    controller.setFeatureFlag.bind(controller)
-  );
+router.use(authMiddleware);
 
-  router.get(
-    '/feature-flags/:name',
-    authorize('config.read'),
-    controller.checkFeatureFlag.bind(controller)
-  );
+router.get('/', configurationController.getConfiguration);
+router.post('/set-configuration', configurationController.setConfiguration);
+router.post('/bulk-update', configurationController.bulkUpdate);
+router.post('/check-feature-flag', configurationController.checkFeatureFlag);
+router.get('/history', configurationController.getHistory);
+router.post('/feature-flags', configurationController.setFeatureFlag);
 
-  router.post(
-    '/bulk-update',
-    authorize('config.manage'),
-    controller.bulkUpdate.bind(controller)
-  );
-
-  router.get(
-    '/:key/history',
-    authorize('config.read'),
-    controller.getHistory.bind(controller)
-  );
-
-  return router;
-} 
+export const configurationRoutes = router;

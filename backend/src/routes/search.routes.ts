@@ -1,50 +1,18 @@
 import { Router } from 'express';
 import { SearchController } from '../controllers/search.controller';
-import { authenticate } from '../middleware/authenticate';
-import { authorize } from '../middleware/authorize';
+import { SearchService } from '../services/search.service';
+import { PrismaClient } from '@prisma/client';
+import { authMiddleware } from '../middleware/auth.middleware';
 
-export function createSearchRoutes(
-  controller: SearchController
-): Router {
-  const router = Router();
+const router = Router();
+const prisma = new PrismaClient();
+const searchService = new SearchService(prisma);
+const searchController = new SearchController(searchService);
 
-  router.use(authenticate);
+router.use(authMiddleware);
 
-  router.post(
-    '/:type/search',
-    authorize('search.read'),
-    controller.search.bind(controller)
-  );
+router.get('/products', searchController.searchProducts);
+router.get('/customers', searchController.searchCustomers);
+router.get('/orders', searchController.searchOrders);
 
-  router.get(
-    '/:type/suggest',
-    authorize('search.read'),
-    controller.suggest.bind(controller)
-  );
-
-  router.post(
-    '/index',
-    authorize('search.write'),
-    controller.indexDocument.bind(controller)
-  );
-
-  router.post(
-    '/bulk-index',
-    authorize('search.write'),
-    controller.bulkIndex.bind(controller)
-  );
-
-  router.delete(
-    '/:type/:id',
-    authorize('search.write'),
-    controller.deleteDocument.bind(controller)
-  );
-
-  router.post(
-    '/:type/reindex',
-    authorize('search.manage'),
-    controller.reindex.bind(controller)
-  );
-
-  return router;
-} 
+export const searchRoutes = router; 

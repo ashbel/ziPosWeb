@@ -1,44 +1,29 @@
 import { Router } from 'express';
 import { NotificationController } from '../controllers/notification.controller';
-import { authenticate } from '../middleware/authenticate';
-import { authorize } from '../middleware/authorize';
+import { NotificationService } from '../services/notification.service';
+import { PrismaClient } from '@prisma/client';
+import { Redis } from 'ioredis';
+import { Logger } from '../utils/logger';
+import { authMiddleware } from '../middleware/auth.middleware';
 
-export function createNotificationRoutes(
-  controller: NotificationController
-): Router {
-  const router = Router();
+const router = Router();
+const prisma = new PrismaClient();
+const redis = new Redis();
+const logger = new Logger('NotificationService');
 
-  router.use(authenticate);
+const notificationService = new NotificationService({
+  prisma,
+  redis,
+  logger
+});
+const notificationController = new NotificationController(notificationService);
 
-  router.post(
-    '/send',
-    authorize('notifications.send'),
-    controller.sendNotification.bind(controller)
-  );
+router.use(authMiddleware);
 
-  router.get(
-    '/user/:userId',
-    authorize('notifications.read'),
-    controller.getNotifications.bind(controller)
-  );
+router.post('/send', notificationController.sendNotification);
+router.get('/:userId', notificationController.getNotifications);
+router.post('/:userId/:notificationId/read', notificationController.markAsRead);
+router.post('/templates', notificationController.createTemplate);
+router.get('/metrics', notificationController.getMetrics);
 
-  router.post(
-    '/user/:userId/notifications/:notificationId/read',
-    authorize('notifications.update'),
-    controller.markAsRead.bind(controller)
-  );
-
-  router.post(
-    '/templates',
-    authorize('notifications.manage'),
-    controller.createTemplate.bind(controller)
-  );
-
-  router.get(
-    '/metrics',
-    authorize('notifications.metrics'),
-    controller.getMetrics.bind(controller)
-  );
-
-  return router;
-} 
+export const notificationRoutes = router; 

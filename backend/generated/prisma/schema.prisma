@@ -16,20 +16,19 @@ datasource db {
 
 // User and Authentication
 model User {
-  id          String       @id @default(uuid())
-  email       String       @unique
-  password    String
-  firstName   String
-  lastName    String
-  role        Role         @default(STAFF)
-  isActive    Boolean      @default(true)
-  lastLogin   DateTime?
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
-  sessions    Session[]
-  permissions Permission[]
-  orders      Order[]
-  shifts      Shift[]
+  id               String       @id @default(uuid())
+  email            String       @unique
+  password         String
+  name             String       @default("")
+  role             String       @default("user")
+  twoFactorEnabled Boolean      @default(false)
+  twoFactorSecret  String?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+  sessions         Session[]
+  permissions      Permission[]
+  orders           Order[]
+  shifts           Shift[]
 }
 
 model Session {

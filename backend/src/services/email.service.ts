@@ -1,7 +1,7 @@
 import { BaseService } from './base.service';
 import { ValidationError } from '../utils/errors';
 import nodemailer, { Transporter } from 'nodemailer';
-import { SES } from 'aws-sdk';
+import { SESClient, SendEmailCommand } from '@aws-sdk/client-ses';
 import { Redis } from 'ioredis';
 import { readFile } from 'fs/promises';
 import { join } from 'path';
@@ -9,6 +9,7 @@ import Handlebars from 'handlebars';
 import juice from 'juice';
 import { Queue } from 'bull';
 import { DateTime } from 'luxon';
+import { Logger } from '../utils/logger';
 
 interface EmailOptions {
   to: string | string[];
@@ -35,68 +36,61 @@ interface EmailTemplate {
 
 export class EmailService extends BaseService {
   private transporter: Transporter;
-  private ses: SES;
+  private sesClient: SESClient;
   private emailQueue: Queue;
   private readonly redis: Redis;
   private readonly templatePath: string;
   private readonly templates: Map<string, EmailTemplate>;
+  private logger: Logger;
 
-  constructor(deps: any) {
-    super(deps);
-    
+  constructor(deps: { prisma: any; redis: any; logger: Logger }) {
+    super(deps.prisma, deps.redis, deps.logger);
     this.redis = deps.redis;
     this.templatePath = process.env.EMAIL_TEMPLATE_PATH || './templates/email';
     this.templates = new Map();
+    this.logger = deps.logger;
 
     this.initializeTransport();
     this.initializeQueue();
     this.loadTemplates();
+
+    this.sesClient = new SESClient({
+      region: process.env.AWS_REGION || 'us-east-1',
+      credentials: {
+        accessKeyId: process.env.AWS_ACCESS_KEY_ID || '',
+        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || '',
+      },
+    });
   }
 
   async sendEmail(options: EmailOptions): Promise<void> {
     try {
-      // Validate email options
-      await this.validateEmailOptions(options);
-
-      // Get template
-      const template = await this.getTemplate(options.template);
-
-      // Compile template
-      const { html, text } = await this.compileTemplate(
-        template,
-        options.data || {}
-      );
-
-      // Prepare email data
-      const emailData = {
-        to: Array.isArray(options.to) ? options.to.join(',') : options.to,
-        from: process.env.EMAIL_FROM,
-        subject: options.subject || template.subject,
-        html,
-        text,
-        attachments: options.attachments,
-        priority: this.getPriorityHeader(options.priority)
-      };
-
-      // Add to queue or send immediately
-      if (options.scheduledFor) {
-        await this.scheduleEmail(emailData, options.scheduledFor);
-      } else {
-        await this.emailQueue.add('sendEmail', emailData, {
-          priority: this.getQueuePriority(options.priority)
-        });
-      }
-
-      // Log email
-      await this.logEmail({
-        to: options.to,
-        subject: emailData.subject,
-        template: options.template,
-        scheduledFor: options.scheduledFor
+      const command = new SendEmailCommand({
+        Source: options.from || process.env.EMAIL_FROM,
+        Destination: {
+          ToAddresses: Array.isArray(options.to) ? options.to : [options.to],
+          CcAddresses: options.cc,
+          BccAddresses: options.bcc,
+        },
+        Message: {
+          Subject: {
+            Data: options.subject,
+            Charset: 'UTF-8',
+          },
+          Body: {
+            Text: {
+              Data: options.body,
+              Charset: 'UTF-8',
+            },
+          },
+        },
       });
+
+      await this.sesClient.send(command);
+      this.logger.info('Email sent successfully', { to: options.to });
     } catch (error) {
-      this.logger.error('Email send error:', error);
-      throw error;
+      this.logger.error('Failed to send email', { error });
+      throw new ValidationError('Failed to send email');
     }
   }
 
@@ -234,14 +228,8 @@ export class EmailService extends BaseService {
 
     switch (provider) {
       case 'ses':
-        this.ses = new SES({
-          accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-          secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-          region: process.env.AWS_REGION
-        });
-
         this.transporter = nodemailer.createTransport({
-          SES: this.ses
+          SES: this.sesClient
         });
         break;
 

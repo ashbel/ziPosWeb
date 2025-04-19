@@ -126,11 +126,10 @@ exports.Prisma.UserScalarFieldEnum = {
   id: 'id',
   email: 'email',
   password: 'password',
-  firstName: 'firstName',
-  lastName: 'lastName',
+  name: 'name',
   role: 'role',
-  isActive: 'isActive',
-  lastLogin: 'lastLogin',
+  twoFactorEnabled: 'twoFactorEnabled',
+  twoFactorSecret: 'twoFactorSecret',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 };
@@ -320,13 +319,6 @@ exports.Prisma.JsonNullValueFilter = {
   JsonNull: Prisma.JsonNull,
   AnyNull: Prisma.AnyNull
 };
-exports.Role = exports.$Enums.Role = {
-  ADMIN: 'ADMIN',
-  MANAGER: 'MANAGER',
-  STAFF: 'STAFF',
-  CASHIER: 'CASHIER'
-};
-
 exports.MovementType = exports.$Enums.MovementType = {
   IN: 'IN',
   OUT: 'OUT',

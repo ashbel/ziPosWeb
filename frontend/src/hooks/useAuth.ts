@@ -1,50 +1,30 @@
-import { useMutation } from '@tanstack/react-query';
-import { api } from '@/lib/api';
-import { useNavigate } from 'react-router-dom';
-import { useToast } from '@/components/ui/use-toast';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import api from '@/utils/api';
+import { useRouter } from 'next/router';
 
-interface LoginCredentials {
-  email: string;
-  password: string;
-}
+export const useAuth = () => {
+  const queryClient = useQueryClient();
+  const router = useRouter();
 
-export function useAuth() {
-  const navigate = useNavigate();
-  const { toast } = useToast();
-
-  const { mutateAsync: login, isLoading } = useMutation({
-    mutationFn: async (credentials: LoginCredentials) => {
-      const response = await api.post('/auth/login', credentials);
-      return response.data;
-    },
+  const login = useMutation({
+    mutationFn: (credentials: { email: string; password: string }) =>
+      api.post('/auth/login', credentials).then(res => res.data),
     onSuccess: (data) => {
       localStorage.setItem('token', data.token);
-      toast({
-        title: 'Success',
-        description: 'Logged in successfully',
-      });
-      navigate('/dashboard');
-    },
-    onError: (error) => {
-      toast({
-        title: 'Error',
-        description: 'Failed to login',
-        variant: 'destructive',
-      });
-    },
+      queryClient.setQueryData(['user'], data.user);
+      router.push('/dashboard');
+    }
   });
 
   const logout = () => {
     localStorage.removeItem('token');
-    navigate('/login');
+    queryClient.clear();
+    router.push('/login');
   };
-
-  const isAuthenticated = !!localStorage.getItem('token');
 
   return {
-    login,
+    login: login.mutateAsync,
     logout,
-    isLoading,
-    isAuthenticated,
+    isLoading: login.isLoading
   };
-} 
+}; 

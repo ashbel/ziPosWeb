@@ -1,86 +1,27 @@
 import { Router } from 'express';
 import { DiscountController } from '../controllers/discount.controller';
 import { validateDiscount } from '../validators/discount.validator';
-import { authenticate, authorize } from '../middleware/auth.middleware';
+import { authMiddleware } from '../middleware/auth.middleware';
+import { PrismaClient } from '@prisma/client';
+import { Logger } from '../utils/logger';
+import { Redis } from 'ioredis';
+import { DiscountService } from '../services/discount.service';
 
-export const discountRouter = Router();
-const discountController = new DiscountController();
+const router = Router();
+const prisma = new PrismaClient();
+const redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379');
+const logger = new Logger('CustomerService');
 
-discountRouter.use(authenticate);
+const discountService = new DiscountService(prisma);
+const discountController = new DiscountController(discountService);
+router.use(authMiddleware);
 
-discountRouter.get(
-  '/',
-  authorize(['manage_discounts']),
-  discountController.getDiscounts
-);
+router.get('/', discountController.getDiscounts);
 
-discountRouter.post(
-  '/',
-  authorize(['manage_discounts']),
-  validateDiscount,
-  discountController.createDiscount
-);
+router.post('/', discountController.createDiscount);
 
-discountRouter.put(
-  '/:id',
-  authorize(['manage_discounts']),
-  validateDiscount,
-  discountController.updateDiscount
-);
+router.put('/:id', discountController.updateDiscount);
 
-discountRouter.delete(
-  '/:id',
-  authorize(['manage_discounts']),
-  discountController.deleteDiscount
-);
+router.delete('/:id', discountController.deleteDiscount);
 
-discountRouter.post(
-  '/calculate',
-  discountController.calculateDiscount
-);
-
-export function createDiscountRoutes(
-  controller: DiscountController
-): Router {
-  const router = Router();
-
-  router.use(authenticate);
-
-  router.post(
-    '/',
-    authorize('discounts.create'),
-    controller.createDiscount.bind(controller)
-  );
-
-  router.post(
-    '/validate/:code',
-    authorize('discounts.validate'),
-    controller.validateDiscount.bind(controller)
-  );
-
-  router.post(
-    '/campaigns',
-    authorize('discounts.manage'),
-    controller.createPromotionCampaign.bind(controller)
-  );
-
-  router.post(
-    '/generate',
-    authorize('discounts.manage'),
-    controller.generateDiscountCodes.bind(controller)
-  );
-
-  router.get(
-    '/analytics',
-    authorize('discounts.read'),
-    controller.getPerformanceAnalytics.bind(controller)
-  );
-
-  router.post(
-    '/bulk-update',
-    authorize('discounts.manage'),
-    controller.bulkUpdateDiscounts.bind(controller)
-  );
-
-  return router;
-} 
+export const discountRouter = router;

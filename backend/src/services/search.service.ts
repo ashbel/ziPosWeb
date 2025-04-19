@@ -1,7 +1,8 @@
 import { BaseService } from './base.service';
 import { ValidationError } from '../utils/errors';
-import { Client } from '@elastic/elasticsearch';
+// import { Client } from '@elastic/elasticsearch';
 import { Redis } from 'ioredis';
+import { PrismaClient } from '@prisma/client';
 
 interface SearchableEntity {
   type: string;
@@ -39,17 +40,17 @@ interface SearchResult<T> {
 }
 
 export class SearchService extends BaseService {
-  private readonly elasticsearch: Client;
+  // private readonly elasticsearch: Client;
   private readonly redis: Redis;
   private readonly indexPrefix: string;
 
-  constructor(deps: any) {
-    super(deps);
+  constructor(prisma: PrismaClient) {
+    super(prisma);
     
-    this.elasticsearch = new Client({
-      node: process.env.ELASTICSEARCH_URL
-    });
-    this.redis = deps.redis;
+    // this.elasticsearch = new Client({
+    //   node: process.env.ELASTICSEARCH_URL
+    // });
+    this.redis = prisma.redis;
     this.indexPrefix = process.env.ELASTICSEARCH_INDEX_PREFIX || 'app';
   }
 
@@ -400,5 +401,115 @@ export class SearchService extends BaseService {
       default:
         throw new ValidationError(`Unknown entity type: ${type}`);
     }
+  }
+
+  async searchProducts(query: any) {
+    const { q, page = 1, limit = 10 } = query;
+    const skip = (page - 1) * limit;
+
+    const products = await this.prisma.product.findMany({
+      where: {
+        OR: [
+          { name: { contains: q, mode: 'insensitive' } },
+          { description: { contains: q, mode: 'insensitive' } },
+          { sku: { contains: q, mode: 'insensitive' } }
+        ]
+      },
+      skip,
+      take: limit,
+      include: {
+        category: true,
+        inventory: true
+      }
+    });
+
+    const total = await this.prisma.product.count({
+      where: {
+        OR: [
+          { name: { contains: q, mode: 'insensitive' } },
+          { description: { contains: q, mode: 'insensitive' } },
+          { sku: { contains: q, mode: 'insensitive' } }
+        ]
+      }
+    });
+
+    return {
+      products,
+      total,
+      page,
+      totalPages: Math.ceil(total / limit)
+    };
+  }
+
+  async searchCustomers(query: any) {
+    const { q, page = 1, limit = 10 } = query;
+    const skip = (page - 1) * limit;
+
+    const customers = await this.prisma.customer.findMany({
+      where: {
+        OR: [
+          { name: { contains: q, mode: 'insensitive' } },
+          { email: { contains: q, mode: 'insensitive' } },
+          { phone: { contains: q, mode: 'insensitive' } }
+        ]
+      },
+      skip,
+      take: limit
+    });
+
+    const total = await this.prisma.customer.count({
+      where: {
+        OR: [
+          { name: { contains: q, mode: 'insensitive' } },
+          { email: { contains: q, mode: 'insensitive' } },
+          { phone: { contains: q, mode: 'insensitive' } }
+        ]
+      }
+    });
+
+    return {
+      customers,
+      total,
+      page,
+      totalPages: Math.ceil(total / limit)
+    };
+  }
+
+  async searchOrders(query: any) {
+    const { q, page = 1, limit = 10 } = query;
+    const skip = (page - 1) * limit;
+
+    const orders = await this.prisma.order.findMany({
+      where: {
+        OR: [
+          { id: { contains: q, mode: 'insensitive' } },
+          { customer: { name: { contains: q, mode: 'insensitive' } } },
+          { status: { contains: q, mode: 'insensitive' } }
+        ]
+      },
+      skip,
+      take: limit,
+      include: {
+        customer: true,
+        items: true
+      }
+    });
+
+    const total = await this.prisma.order.count({
+      where: {
+        OR: [
+          { id: { contains: q, mode: 'insensitive' } },
+          { customer: { name: { contains: q, mode: 'insensitive' } } },
+          { status: { contains: q, mode: 'insensitive' } }
+        ]
+      }
+    });
+
+    return {
+      orders,
+      total,
+      page,
+      totalPages: Math.ceil(total / limit)
+    };
   }
 } 

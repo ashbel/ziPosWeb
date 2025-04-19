@@ -4,7 +4,7 @@ import { ShippingService } from '../services/shipping.service';
 import { PrismaClient } from '@prisma/client';
 import { Redis } from 'ioredis';
 import { Logger } from '../utils/logger';
-import { authenticate } from '../middleware/auth.middleware';
+import { authMiddleware } from '../middleware/auth.middleware';
 import { validateRequest } from '../middleware/validation.middleware';
 import { z } from 'zod';
 
@@ -18,7 +18,7 @@ const shippingController = new ShippingController(shippingService);
 // Get shipping rates
 router.post(
   '/rates',
-  authenticate,
+  authMiddleware,
   validateRequest({
     body: z.object({
       carrier: z.string().optional(),
@@ -50,7 +50,7 @@ router.post(
 // Create shipment
 router.post(
   '/shipments',
-  authenticate,
+  authMiddleware,
   validateRequest({
     body: z.object({
       orderId: z.string(),
@@ -89,7 +89,7 @@ router.post(
 // Track shipment
 router.get(
   '/tracking/:carrier/:trackingNumber',
-  authenticate,
+  authMiddleware,
   validateRequest({
     params: z.object({
       carrier: z.string(),
@@ -102,7 +102,7 @@ router.get(
 // Validate address
 router.post(
   '/address/validate',
-  authenticate,
+  authMiddleware,
   validateRequest({
     body: z.object({
       address: z.object({
@@ -117,4 +117,4 @@ router.post(
   shippingController.validateAddress
 );
 
-export default router; 
+export const shippingRoutes = router; 

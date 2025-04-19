@@ -66,4 +66,4 @@ router.get(
   (req, res) => cacheController.getCacheStats(req, res)
 );
 
-export default router; 
+export const cacheRoutes = router; 

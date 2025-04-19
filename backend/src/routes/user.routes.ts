@@ -1,48 +1,32 @@
 import { Router } from 'express';
 import { UserController } from '../controllers/user.controller';
-import { validateUser, validateRole } from '../validators/user.validator';
-import { authenticate, authorize } from '../middleware/auth.middleware';
+import { authMiddleware } from '../middleware/auth.middleware';
+import { PrismaClient } from '@prisma/client';
+import { UserService } from '../services/user.service';
+import { Logger } from '../utils/logger';
+import Redis from 'ioredis';
 
-export const userRouter = Router();
-const userController = new UserController();
+const router = Router();
+const prisma = new PrismaClient();
+const redis = new Redis();
+const logger = new Logger('UserService');
 
-userRouter.use(authenticate);
+const userService = new UserService(prisma, redis, logger);
 
-userRouter.get(
-  '/',
-  authorize(['manage_users']),
-  userController.getUsers
-);
+const userController = new UserController(userService);
 
-userRouter.post(
-  '/',
-  authorize(['manage_users']),
-  validateUser,
-  userController.createUser
-);
+// Apply authentication middleware to all routes
+router.use(authMiddleware);
 
-userRouter.put(
-  '/:id',
-  authorize(['manage_users']),
-  validateUser,
-  userController.updateUser
-);
+// User routes
+router.get('/profile', userController.getProfile);
+router.put('/profile', userController.updateProfile);
+router.put('/password', userController.changePassword);
 
-userRouter.delete(
-  '/:id',
-  authorize(['manage_users']),
-  userController.deleteUser
-);
+// Admin routes
+router.get('/', userController.listUsers);
+router.get('/:id', userController.getUser);
+router.put('/:id', userController.updateUser);
+router.delete('/:id', userController.deleteUser);
 
-userRouter.get(
-  '/roles',
-  authorize(['manage_roles']),
-  userController.getRoles
-);
-
-userRouter.post(
-  '/roles',
-  authorize(['manage_roles']),
-  validateRole,
-  userController.createRole
-); 
+export const userRoutes = router; 
