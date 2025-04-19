@@ -1,3 +1,13 @@
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=ashbel_ziPosWeb&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=ashbel_ziPosWeb)
+[![Bugs](https://sonarcloud.io/api/project_badges/measure?project=ashbel_ziPosWeb&metric=bugs)](https://sonarcloud.io/summary/new_code?id=ashbel_ziPosWeb)
+[![Code Smells](https://sonarcloud.io/api/project_badges/measure?project=ashbel_ziPosWeb&metric=code_smells)](https://sonarcloud.io/summary/new_code?id=ashbel_ziPosWeb)
+[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=ashbel_ziPosWeb&metric=coverage)](https://sonarcloud.io/summary/new_code?id=ashbel_ziPosWeb)
+[![Duplicated Lines (%)](https://sonarcloud.io/api/project_badges/measure?project=ashbel_ziPosWeb&metric=duplicated_lines_density)](https://sonarcloud.io/summary/new_code?id=ashbel_ziPosWeb)
+[![Lines of Code](https://sonarcloud.io/api/project_badges/measure?project=ashbel_ziPosWeb&metric=ncloc)](https://sonarcloud.io/summary/new_code?id=ashbel_ziPosWeb)
+[![Security Rating](https://sonarcloud.io/api/project_badges/measure?project=ashbel_ziPosWeb&metric=security_rating)](https://sonarcloud.io/summary/new_code?id=ashbel_ziPosWeb)
+[![Duplicated Lines (%)](https://sonarcloud.io/api/project_badges/measure?project=ashbel_ziPosWeb&metric=duplicated_lines_density)](https://sonarcloud.io/summary/new_code?id=ashbel_ziPosWeb)
+[![Technical Debt](https://sonarcloud.io/api/project_badges/measure?project=ashbel_ziPosWeb&metric=sqale_index)](https://sonarcloud.io/summary/new_code?id=ashbel_ziPosWeb)
+
 # POS System
 
 A modern Point of Sale (POS) system built with Next.js, TypeScript, and Prisma.
